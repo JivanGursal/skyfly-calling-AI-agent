@@ -1,58 +1,41 @@
-# Step5: Streamlit dashboard (Just for testing)
 import streamlit as st
-import datetime as dt
+import pandas as pd
 import requests
 
-st.title("Dubai Hospital Appointment Booking Portal")
-base_url = st.text_input("Backend URL", "http://localhost:4444").rstrip("/")
+# Page Configuration
+st.set_page_config(page_title="Skyfly Technology - Lead Dashboard", layout="wide")
 
-patient_name = st.text_input("Patient name")
-reason = st.text_input("Reason")
-start_date = st.date_input("Date", value=dt.date.today() + dt.timedelta(days=1))
-start_time = st.time_input("Time", value=dt.time(9, 0))
+st.title("🚀 Skyfly Technology Lead Management")
+st.subheader("AI Voice Agent se aayi hui leads yahan dikhengi")
 
-if st.button("Schedule"):
-    start_dt = dt.datetime.combine(start_date, start_time)
-    payload = {
-        "patient_name": patient_name.strip(),
-        "reason": reason.strip() or None,
-        "start_time": start_dt.isoformat(),
-    }
-    try:
-        resp = requests.post(f"{base_url}/schedule_appointment/", json=payload, timeout=10)
-        resp.raise_for_status()
-        st.success("Scheduled")
-    except requests.RequestException as exc:
-        st.error(f"Schedule failed: {exc}")
+# Backend URL (Railway ka URL yahan daalein)
+base_url = st.text_input("Backend URL", "https://your-railway-app.com").rstrip("/")
 
 st.divider()
-st.subheader("Cancel")
 
-cancel_name = st.text_input("Patient name to cancel", key="cancel_name")
-cancel_date = st.date_input("Date to cancel", key="cancel_date", value=dt.date.today())
-
-if st.button("Cancel appointments"):
-    payload = {
-            "patient_name": cancel_name.strip(), 
-            "date": cancel_date.isoformat()
-               }
+# Leads Fetch karne ka button
+if st.button("Refresh Leads List"):
     try:
-        resp = requests.post(f"{base_url}/cancel_appointment/", json=payload, timeout=10)
+        # Humne backend mein /view-leads banaya tha (ya fir /list_appointments jaisa logic)
+        resp = requests.get(f"{base_url}/view-leads", timeout=10)
         resp.raise_for_status()
-        data = resp.json() if resp.content else {}
-        st.success(f"Canceled: {data.get('canceled_count', 0)}")    
-    except requests.HTTPError:
-        st.error(resp.text)
-    except requests.RequestException as exc:
-        st.error(f"Cancel failed: {exc}")
+        leads_data = resp.json()
 
+        if leads_data:
+            df = pd.DataFrame(leads_data)
+            # Column names ko thoda saaf dikhane ke liye
+            df.columns = [col.replace('_', ' ').title() for col in df.columns]
+            st.dataframe(df, use_container_width=True)
+            st.success(f"Total {len(leads_data)} leads found!")
+        else:
+            st.info("Abhi tak koi leads nahi aayi hain.")
+            
+    except Exception as e:
+        st.error(f"Error fetching leads: {e}")
 
-appointments_date = st.date_input("Date to check appointments", key="check_appointment_date", value=dt.date.today())
-if st.button("Check appointments"):
-    try:
-        params = {"date": appointments_date.isoformat()}
-        resp = requests.post(f"{base_url}/list_appointments/", params=params, timeout=10)
-        resp.raise_for_status()
-        st.dataframe(resp.json(), use_container_width=True, hide_index=True)
-    except requests.RequestException as exc:
-        st.warning(f"Could not load appointments: {exc}")
+st.sidebar.markdown("""
+### Quick Actions
+- [x] Check Web Dev Leads
+- [x] Check AI Voice Leads
+- [x] Follow up with clients
+""")
