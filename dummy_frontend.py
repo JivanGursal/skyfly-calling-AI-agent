@@ -39,3 +39,40 @@ st.sidebar.markdown("""
 - [x] Check AI Voice Leads
 - [x] Follow up with clients
 """)
+
+st.subheader("Skyfly Lead Entry")
+
+customer_name = st.text_input("Customer Name")
+service_interested = st.selectbox("Service", ["Web Development", "AI Voice Agent", "E-commerce", "Software Dev"])
+contact_info = st.text_input("Contact Details (Email/Phone)")
+budget = st.text_input("Budget (Optional)")
+
+if st.button("Save Lead Manually"):
+    payload = {
+        "name": customer_name.strip(),
+        "service": service_interested,
+        "contact": contact_info.strip(),
+        "budget": budget.strip() or "Not Specified"
+    }
+    try:
+        # Yahan apna Railway URL check karein
+        resp = requests.post(f"{base_url}/collect-lead", json=payload, timeout=10)
+        resp.raise_for_status()
+        st.success("Lead Saved Successfully!")
+    except requests.RequestException as exc:
+        st.error(f"Error: {exc}")
+
+if st.button("Refresh All Leads"):
+    try:
+        resp = requests.get(f"{base_url}/view-leads", timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        if data:
+            import pandas as pd
+            df = pd.DataFrame(data)
+            st.table(df) # Saari leads table form mein dikhengi
+        else:
+            st.info("No leads found yet.")
+    except Exception as e:
+        st.error(f"Failed to fetch leads: {e}")
+
