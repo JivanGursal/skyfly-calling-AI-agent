@@ -1,46 +1,40 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Depends, Request
+from sqlalchemy.orm import Session
+from database import init_db, Lead, get_db
 from pydantic import BaseModel
-from database import init_db, insert_lead
 
-app = FastAPI()
+app = FastAPI(title="Skyfly AI Backend")
 
-# Database initialize karein
+# DB Initialize karein
 init_db()
 
-class SkyflyLead(BaseModel):
+# Pydantic Model for Vapi Tool
+class LeadRequest(BaseModel):
     name: str
     service: str
     contact: str
     budget: str = "Not Specified"
 
 @app.get("/")
-async def root():
-    return {"message": "Skyfly Technology AI Voice Backend is Running!"}
+def home():
+    return {"status": "Skyfly API is Live"}
 
+# Vapi calls this endpoint
 @app.post("/collect-lead")
-async def collect_lead(request: Request):
-    # Vapi sends data in a specific format
-    payload = await request.json()
-    
-    # Extracting data from Vapi's tool call structure
-    try:
-        # Agar aapne Vapi mein tool parameter 'name', 'service', 'contact' rakhe hain
-        args = payload["message"]["toolCalls"][0]["function"]["arguments"]
-        
-        name = args.get("name")
-        service = args.get("service")
-        contact = args.get("contact")
-        budget = args.get("budget", "Not Specified")
+async def collect_lead(request: LeadRequest, db: Session = Depends(get_db)):
+    new_lead = Lead(
+        customer_name=request.name,
+        service_interested=request.service,
+        contact_info=request.contact,
+        budget=request.budget
+    )
+    db.add(new_lead)
+    db.commit()
+    db.refresh(new_lead)
+    return {"message": "Lead saved successfully", "lead_id": new_lead.id}
 
-        # Database mein save karein
-        insert_lead(name, service, contact, budget)
-        
-        return {
-            "results": f"Thank you {name}. Your inquiry for {service} has been recorded. Our team at Skyfly will contact you soon."
-        }
-    except Exception as e:
-        return {"error": str(e), "message": "Failed to extract lead data"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# Dashboard calls this endpoint
+@app.get("/view-leads")
+def view_leads(db: Session = Depends(get_db)):
+    leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
+    return leads
