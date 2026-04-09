@@ -2,77 +2,61 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# Page Configuration
-st.set_page_config(page_title="Skyfly Technology - Lead Dashboard", layout="wide")
+st.set_page_config(page_title="Skyfly Lead Dashboard", layout="wide")
 
-st.title("🚀 Skyfly Technology Lead Management")
-st.subheader("AI Voice Agent se aayi hui leads yahan dikhengi")
+st.title("🚀 Skyfly Technology - Lead Dashboard")
+st.subheader("AI Voice Agent aur Manual Leads yahan dekhengi")
 
-# Backend URL (Railway ka URL yahan daalein)
-base_url = st.text_input("Backend URL", "https://your-railway-app.com").rstrip("/")
+# Yahan apna Railway Backend URL daalein
+base_url = st.text_input("Backend URL", "https://your-railway-app-url.up.railway.app").rstrip("/")
 
 st.divider()
 
-# Leads Fetch karne ka button
-if st.button("Refresh Leads List"):
-    try:
-        # Humne backend mein /view-leads banaya tha (ya fir /list_appointments jaisa logic)
-        resp = requests.get(f"{base_url}/view-leads", timeout=10)
-        resp.raise_for_status()
-        leads_data = resp.json()
-
-        if leads_data:
-            df = pd.DataFrame(leads_data)
-            # Column names ko thoda saaf dikhane ke liye
-            df.columns = [col.replace('_', ' ').title() for col in df.columns]
-            st.dataframe(df, use_container_width=True)
-            st.success(f"Total {len(leads_data)} leads found!")
-        else:
-            st.info("Abhi tak koi leads nahi aayi hain.")
-            
-    except Exception as e:
-        st.error(f"Error fetching leads: {e}")
-
-st.sidebar.markdown("""
-### Quick Actions
-- [x] Check Web Dev Leads
-- [x] Check AI Voice Leads
-- [x] Follow up with clients
-""")
-
-st.subheader("Skyfly Lead Entry")
-
-customer_name = st.text_input("Customer Name")
-service_interested = st.selectbox("Service", ["Web Development", "AI Voice Agent", "E-commerce", "Software Dev"])
-contact_info = st.text_input("Contact Details (Email/Phone)")
-budget = st.text_input("Budget (Optional)")
-
-if st.button("Save Lead Manually"):
-    payload = {
-        "name": customer_name.strip(),
-        "service": service_interested,
-        "contact": contact_info.strip(),
-        "budget": budget.strip() or "Not Specified"
-    }
-    try:
-        # Yahan apna Railway URL check karein
-        resp = requests.post(f"{base_url}/collect-lead", json=payload, timeout=10)
-        resp.raise_for_status()
-        st.success("Lead Saved Successfully!")
-    except requests.RequestException as exc:
-        st.error(f"Error: {exc}")
-
-if st.button("Refresh All Leads"):
+# Refresh Data
+if st.button("🔄 Refresh Leads List"):
     try:
         resp = requests.get(f"{base_url}/view-leads", timeout=10)
         resp.raise_for_status()
         data = resp.json()
+        
         if data:
-            import pandas as pd
             df = pd.DataFrame(data)
-            st.table(df) # Saari leads table form mein dikhengi
+            # Saaf dikhane ke liye columns rename karein
+            df = df.rename(columns={
+                "customer_name": "Name",
+                "service_interested": "Service",
+                "contact_info": "Contact",
+                "budget": "Budget",
+                "created_at": "Date/Time"
+            })
+            st.dataframe(df[["Name", "Service", "Contact", "Budget", "Date/Time"]], use_container_width=True)
+            st.success(f"Total {len(data)} leads captured.")
         else:
-            st.info("No leads found yet.")
+            st.info("No leads in the database yet.")
     except Exception as e:
-        st.error(f"Failed to fetch leads: {e}")
+        st.error(f"Error fetching data: {e}")
 
+st.divider()
+st.subheader("➕ Manual Lead Entry")
+col1, col2 = st.columns(2)
+
+with col1:
+    name = st.text_input("Client Name")
+    service = st.selectbox("Service Required", ["Web Dev", "AI Voice Agent", "E-commerce", "SEO"])
+with col2:
+    contact = st.text_input("Phone/Email")
+    budget = st.text_input("Estimated Budget")
+
+if st.button("Save Manual Lead"):
+    if name and contact:
+        payload = {"name": name, "service": service, "contact": contact, "budget": budget}
+        try:
+            r = requests.post(f"{base_url}/collect-lead", json=payload)
+            if r.status_code == 200:
+                st.success("Lead Saved!")
+            else:
+                st.error("Failed to save.")
+        except Exception as e:
+            st.error(str(e))
+    else:
+        st.warning("Name and Contact are required.")
