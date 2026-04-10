@@ -1,40 +1,37 @@
-from fastapi import FastAPI, Depends, Request
-from sqlalchemy.orm import Session
-from database import init_db, Lead, get_db
-from pydantic import BaseModel
+import os
+import requests
+from fastapi import FastAPI, Request
 
-app = FastAPI(title="Skyfly AI Backend")
+# Railway variables se data uthayega
+VAPI_API_KEY = os.getenv("VAPI_API_KEY")
+ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID")
 
-# DB Initialize karein
-init_db()
+@app.post("/trigger-call")
+async def trigger_instant_call(request: Request):
+    data = await request.json()
+    customer_phone = data.get("phone")
+    customer_name = data.get("name")
 
-# Pydantic Model for Vapi Tool
-class LeadRequest(BaseModel):
-    name: str
-    service: str
-    contact: str
-    budget: str = "Not Specified"
+    if not customer_phone:
+        return {"error": "Phone number is required"}
 
-@app.get("/")
-def home():
-    return {"status": "Skyfly API is Live"}
+    vapi_url = "https://api.vapi.ai/call/phone"
+    headers = {
+        "Authorization": f"Bearer {VAPI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "assistantId": ASSISTANT_ID,
+        "customer": {
+            "number": customer_phone,
+            "name": customer_name
+        },
+        "phoneNumberId": "your_vapi_phone_number_id" # Agar Vapi par number buy kiya hai toh
+    }
 
-# Vapi calls this endpoint
-@app.post("/collect-lead")
-async def collect_lead(request: LeadRequest, db: Session = Depends(get_db)):
-    new_lead = Lead(
-        customer_name=request.name,
-        service_interested=request.service,
-        contact_info=request.contact,
-        budget=request.budget
-    )
-    db.add(new_lead)
-    db.commit()
-    db.refresh(new_lead)
-    return {"message": "Lead saved successfully", "lead_id": new_lead.id}
-
-# Dashboard calls this endpoint
-@app.get("/view-leads")
-def view_leads(db: Session = Depends(get_db)):
-    leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
-    return leads
+    try:
+        response = requests.post(vapi_url, headers=headers, json=payload)
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
