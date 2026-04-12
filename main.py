@@ -2,6 +2,8 @@ import os
 import requests
 from fastapi import FastAPI, Request
 
+app = FastAPI()
+
 # Railway variables se data uthayega
 VAPI_API_KEY = os.getenv("VAPI_API_KEY")
 ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID")
