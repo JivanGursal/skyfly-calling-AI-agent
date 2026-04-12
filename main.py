@@ -5,6 +5,11 @@ from sqlalchemy.orm import Session  # <--- Ye missing tha
 # Database ki file se cheezein mangwana
 from database import SessionLocal, Lead # <--- Check karein aapki file ka naam 'database.py' hi hai na?
 
+from database import engine, Base
+
+# Ye line database mein tables create kar degi agar wo pehle se nahi hain
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 
 # Railway variables
