@@ -38,8 +38,11 @@ async def trigger_instant_call(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-# Ye wala part missing lag raha hai logs ke hisab se
 @app.get("/view-leads")
-def view_leads(db: Session = Depends(get_db)):
-    leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
-    return leads
+async def view_leads(db: Session = Depends(get_db)):
+    try:
+        # Leads ko database se uthana
+        leads = db.query(Lead).all()
+        return leads
+    except Exception as e:
+        return {"error": str(e)}
