@@ -38,6 +38,24 @@ async def trigger_instant_call(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
+# 1. Ye function database se connect karne ke liye zaroori hai
+def get_db():
+    db = SessionLocal() # Make sure SessionLocal aapne database.py se import kiya hai
+    try:
+        yield db
+    finally:
+        db.close()
+
+# 2. Phir aapka ye wala function aayega jo pehle se wahan hai
+@app.get("/view-leads")
+async def view_leads(db: Session = Depends(get_db)):
+    try:
+        leads = db.query(Lead).all()
+        return leads
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/view-leads")
 async def view_leads(db: Session = Depends(get_db)):
     try:
