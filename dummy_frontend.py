@@ -8,7 +8,7 @@ st.title("🚀 Skyfly Technology - Lead Dashboard")
 st.subheader("AI Voice Agent aur Manual Leads yahan dekhengi")
 
 # Yahan apna Railway Backend URL daalein
-base_url = st.text_input("Backend URL", "https://your-railway-app-url.up.railway.app").rstrip("/")
+base_url = st.text_input("Backend URL", "skyfly-calling-ai-agent-production.up.railway.app").rstrip("/")
 
 st.divider()
 
