@@ -1,11 +1,17 @@
+import os
 import datetime as dt
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
-# Database URL (Railway par ye automatically file bana dega)
-DATABASE_URL = "sqlite:///./skyfly_leads.db"
+# Railway ka DATABASE_URL variable uthayega, nahi milega toh local SQLite chalayega
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./skyfly_leads.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# PostgreSQL ke liye simple engine, SQLite ke liye thread check false
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
