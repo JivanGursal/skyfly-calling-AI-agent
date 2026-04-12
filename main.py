@@ -1,37 +1,21 @@
-import os
-import requests
-from fastapi import FastAPI, Request, Depends
-from sqlalchemy.orm import Session  # <--- Ye missing tha
-# Database ki file se cheezein mangwana
-from database import SessionLocal, Lead # <--- Check karein aapki file ka naam 'database.py' hi hai na?
-
-from database import engine, Base
-
-# Ye line database mein tables create kar degi agar wo pehle se nahi hain
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI()
-
-# Railway variables
-VAPI_API_KEY = os.getenv("VAPI_API_KEY")
-ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID")
-
-# 1. Database Connection Helper
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 @app.post("/trigger-call")
-async def trigger_instant_call(request: Request):
+async def trigger_instant_call(request: Request, db: Session = Depends(get_db)): # db add kiya
     data = await request.json()
     customer_phone = data.get("phone")
     customer_name = data.get("name")
 
     if not customer_phone:
         return {"error": "Phone number is required"}
+
+    # --- YE ADD KAREIN: Database mein lead save karna ---
+    new_lead = Lead(
+        customer_name=customer_name, 
+        contact_info=customer_phone,
+        service_interested="AI Voice Agent (Website Form)"
+    )
+    db.add(new_lead)
+    db.commit()
+    # ---------------------------------------------------
 
     vapi_url = "https://api.vapi.ai/call/phone"
     headers = {
@@ -41,10 +25,7 @@ async def trigger_instant_call(request: Request):
     
     payload = {
         "assistantId": ASSISTANT_ID,
-        "customer": {
-            "number": customer_phone,
-            "name": customer_name
-        }
+        "customer": {"number": customer_phone, "name": customer_name}
     }
 
     try:
@@ -53,12 +34,16 @@ async def trigger_instant_call(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-# 2. View Leads Endpoint
-@app.get("/view-leads")
-async def view_leads(db: Session = Depends(get_db)): # Ab 'Session' error nahi dega
-    try:
-        # Leads ko database se uthana
-        leads = db.query(Lead).all()
-        return leads
-    except Exception as e:
-        return {"error": str(e)}
+# Dashboard ki manual entry ke liye ye naya endpoint add karein
+@app.post("/collect-lead")
+async def collect_lead(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    new_lead = Lead(
+        customer_name=data.get("name"),
+        service_interested=data.get("service"),
+        contact_info=data.get("contact"),
+        budget=data.get("budget")
+    )
+    db.add(new_lead)
+    db.commit()
+    return {"status": "success"}
