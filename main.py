@@ -1,12 +1,23 @@
 import os
 import requests
-from fastapi import FastAPI, Request, Depends  # <--- 'Depends' yahan add karein
+from fastapi import FastAPI, Request, Depends
+from sqlalchemy.orm import Session  # <--- Ye missing tha
+# Database ki file se cheezein mangwana
+from database import SessionLocal, Lead # <--- Check karein aapki file ka naam 'database.py' hi hai na?
 
 app = FastAPI()
 
-# Railway variables se data uthayega
+# Railway variables
 VAPI_API_KEY = os.getenv("VAPI_API_KEY")
 ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID")
+
+# 1. Database Connection Helper
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @app.post("/trigger-call")
 async def trigger_instant_call(request: Request):
@@ -28,8 +39,7 @@ async def trigger_instant_call(request: Request):
         "customer": {
             "number": customer_phone,
             "name": customer_name
-        },
-        "phoneNumberId": "your_vapi_phone_number_id" # Agar Vapi par number buy kiya hai toh
+        }
     }
 
     try:
@@ -38,26 +48,9 @@ async def trigger_instant_call(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-# 1. Ye function database se connect karne ke liye zaroori hai
-def get_db():
-    db = SessionLocal() # Make sure SessionLocal aapne database.py se import kiya hai
-    try:
-        yield db
-    finally:
-        db.close()
-
-# 2. Phir aapka ye wala function aayega jo pehle se wahan hai
+# 2. View Leads Endpoint
 @app.get("/view-leads")
-async def view_leads(db: Session = Depends(get_db)):
-    try:
-        leads = db.query(Lead).all()
-        return leads
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@app.get("/view-leads")
-async def view_leads(db: Session = Depends(get_db)):
+async def view_leads(db: Session = Depends(get_db)): # Ab 'Session' error nahi dega
     try:
         # Leads ko database se uthana
         leads = db.query(Lead).all()
